@@ -1,6 +1,6 @@
 # Three js DoF
 
-A basic three js Dof boilerplate. Install nodemon for dev. Run npm install in your git bash
+A basic three js Dof boilerplate.
 
 # Substance painter:
 
