@@ -1,6 +1,7 @@
 # Three js DoF
 
 A basic three js Dof boilerplate.
+![Screenshot](dof.png)
 
 # Substance painter:
 
