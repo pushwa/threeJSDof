@@ -80,7 +80,7 @@ function init() {
   scene = new THREE.Scene();
 
   // Fog
-  scene.fog = new THREE.Fog(0x0d0d0e, 0.7, 17, 4000);
+  scene.fog = new THREE.Fog(0x0d0d0e, 0.5, 17, 4000);
 
   // Camera
   camera = new THREE.PerspectiveCamera(70, width / height, 1, 10);
