@@ -16,8 +16,8 @@ const postprocessing = { enabled: true };
 let materialDepth, effectController;
 
 const shaderSettings = {
-  rings: 3,
-  samples: 4,
+  rings: 4,
+  samples: 5,
 };
 
 //------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ function init() {
   scene = new THREE.Scene();
 
   // Fog
-  scene.fog = new THREE.Fog(0x121216, 0.5, 45, 4000);
+  scene.fog = new THREE.Fog(0x0d0d0e, 0.7, 17, 4000);
 
   // Camera
   camera = new THREE.PerspectiveCamera(70, width / height, 1, 10);
@@ -160,8 +160,8 @@ function init() {
   effectController = {
     enabled: true,
     focalDepth: 3.9,
-    fstop: 15.0,
-    maxblur: 1.9,
+    fstop: 17.85,
+    maxblur: 1.45,
     vignetting: true,
     depthblur: false,
     threshold: 0.5,
