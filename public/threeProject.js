@@ -12,8 +12,8 @@ import { BokehShader, BokehDepthShader } from './jsm/shaders/BokehShader2.js';
 let scene, camera, renderer;
 
 // Bokeh
-const postprocessing = { enabled: true };
-let materialDepth, effectController;
+const postprocessing = {};
+let materialDepth;
 
 const shaderSettings = {
   rings: 4,
@@ -144,6 +144,16 @@ function init() {
 
   //------------------------------------------------------------------------------
 
+  depthShader();
+  initPostprocessing();
+  bokeh_gui();
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+function depthShader() {
   const depthShader = BokehDepthShader;
 
   materialDepth = new THREE.ShaderMaterial({
@@ -154,10 +164,76 @@ function init() {
 
   materialDepth.uniforms['mNear'].value = camera.near;
   materialDepth.uniforms['mFar'].value = camera.far;
+}
 
-  initPostprocessing();
+function initPostprocessing() {
+  postprocessing.scene = new THREE.Scene();
 
-  effectController = {
+  postprocessing.camera = new THREE.OrthographicCamera(
+    width / -2,
+    width / 2,
+    height / 2,
+    height / -2,
+    -10000,
+    10000
+  );
+
+  postprocessing.camera.position.z = 100;
+
+  postprocessing.scene.add(postprocessing.camera);
+
+  const pars = {
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    format: THREE.RGBFormat,
+  };
+
+  postprocessing.rtTextureDepth = new THREE.WebGLRenderTarget(
+    width,
+    height,
+    pars
+  );
+
+  postprocessing.rtTextureColor = new THREE.WebGLRenderTarget(
+    width,
+    height,
+    pars
+  );
+
+  const bokeh_shader = BokehShader;
+
+  postprocessing.bokeh_uniforms = THREE.UniformsUtils.clone(
+    bokeh_shader.uniforms
+  );
+
+  postprocessing.bokeh_uniforms['tColor'].value =
+    postprocessing.rtTextureColor.texture;
+  postprocessing.bokeh_uniforms['tDepth'].value =
+    postprocessing.rtTextureDepth.texture;
+  postprocessing.bokeh_uniforms['textureWidth'].value = window.innerWidth;
+  postprocessing.bokeh_uniforms['textureHeight'].value = window.innerHeight;
+
+  postprocessing.materialBokeh = new THREE.ShaderMaterial({
+    uniforms: postprocessing.bokeh_uniforms,
+    vertexShader: bokeh_shader.vertexShader,
+    fragmentShader: bokeh_shader.fragmentShader,
+    defines: {
+      RINGS: shaderSettings.rings,
+      SAMPLES: shaderSettings.samples,
+    },
+  });
+
+  postprocessing.quad = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    postprocessing.materialBokeh
+  );
+
+  postprocessing.quad.position.z = -500;
+  postprocessing.scene.add(postprocessing.quad);
+}
+
+function bokeh_gui() {
+  const effectController = {
     enabled: true,
     focalDepth: 3.9,
     fstop: 17.85,
@@ -219,78 +295,11 @@ function init() {
 
   gui.add(shaderSettings, 'rings', 1, 8).step(1).onChange(shaderUpdate);
   gui.add(shaderSettings, 'samples', 1, 13).step(1).onChange(shaderUpdate);
+
   gui.close();
+  gui.hide();
 
   matChanger();
-}
-
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-
-function initPostprocessing() {
-  postprocessing.scene = new THREE.Scene();
-
-  postprocessing.camera = new THREE.OrthographicCamera(
-    width / -2,
-    width / 2,
-    height / 2,
-    height / -2,
-    -10000,
-    10000
-  );
-  postprocessing.camera.position.z = 100;
-
-  postprocessing.scene.add(postprocessing.camera);
-
-  const pars = {
-    minFilter: THREE.LinearFilter,
-    magFilter: THREE.LinearFilter,
-    format: THREE.RGBFormat,
-  };
-
-  postprocessing.rtTextureDepth = new THREE.WebGLRenderTarget(
-    width,
-    height,
-    pars
-  );
-
-  postprocessing.rtTextureColor = new THREE.WebGLRenderTarget(
-    width,
-    height,
-    pars
-  );
-
-  const bokeh_shader = BokehShader;
-
-  postprocessing.bokeh_uniforms = THREE.UniformsUtils.clone(
-    bokeh_shader.uniforms
-  );
-
-  postprocessing.bokeh_uniforms['tColor'].value =
-    postprocessing.rtTextureColor.texture;
-  postprocessing.bokeh_uniforms['tDepth'].value =
-    postprocessing.rtTextureDepth.texture;
-  postprocessing.bokeh_uniforms['textureWidth'].value = window.innerWidth;
-  postprocessing.bokeh_uniforms['textureHeight'].value = window.innerHeight;
-
-  postprocessing.materialBokeh = new THREE.ShaderMaterial({
-    uniforms: postprocessing.bokeh_uniforms,
-    vertexShader: bokeh_shader.vertexShader,
-    fragmentShader: bokeh_shader.fragmentShader,
-    defines: {
-      RINGS: shaderSettings.rings,
-      SAMPLES: shaderSettings.samples,
-    },
-  });
-
-  postprocessing.quad = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, height),
-    postprocessing.materialBokeh
-  );
-
-  postprocessing.quad.position.z = -500;
-  postprocessing.scene.add(postprocessing.quad);
 }
 
 function shaderUpdate() {
@@ -330,26 +339,18 @@ function animate() {
 
   // -------------------------------------
 
-  if (postprocessing.enabled) {
-    renderer.clear();
+  renderer.clear();
 
-    renderer.setRenderTarget(postprocessing.rtTextureColor);
-    renderer.clear();
-    renderer.render(scene, camera);
+  renderer.setRenderTarget(postprocessing.rtTextureColor);
+  renderer.clear();
+  renderer.render(scene, camera);
 
-    scene.overrideMaterial = materialDepth;
-    renderer.setRenderTarget(postprocessing.rtTextureDepth);
-    renderer.clear();
-    renderer.render(scene, camera);
-    scene.overrideMaterial = null;
+  scene.overrideMaterial = materialDepth;
+  renderer.setRenderTarget(postprocessing.rtTextureDepth);
+  renderer.clear();
+  renderer.render(scene, camera);
+  scene.overrideMaterial = null;
 
-    renderer.setRenderTarget(null);
-    renderer.render(postprocessing.scene, postprocessing.camera);
-  } else {
-    scene.overrideMaterial = null;
-
-    renderer.setRenderTarget(null);
-    renderer.clear();
-    renderer.render(scene, camera);
-  }
+  renderer.setRenderTarget(null);
+  renderer.render(postprocessing.scene, postprocessing.camera);
 }
